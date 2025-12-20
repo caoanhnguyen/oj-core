@@ -50,6 +50,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final RefreshTokenService refreshTokenService;
     private final TokenCookieUtil tokenCookieUtil;
+    private final TokenBlacklistServiceImpl tokenBlacklistServiceImpl;
 
 
     @Transactional
@@ -171,6 +172,12 @@ public class AuthServiceImpl implements AuthService {
 
             // Revoke refresh token trong database
             refreshTokenService.revokeToken(refreshTokenStr);
+
+            // Thêm access token vào blacklist
+            String accessToken = tokenCookieUtil.getCookieValue(httpRequest, tokenCookieUtil.ACCESS_TOKEN_COOKIE_NAME);
+            if (accessToken != null && !accessToken.isEmpty()) {
+                tokenBlacklistServiceImpl.blacklistToken(accessToken);
+            }
 
             // Xoá cookie access token và refresh token
             tokenCookieUtil.clearCookies(httpResponse);

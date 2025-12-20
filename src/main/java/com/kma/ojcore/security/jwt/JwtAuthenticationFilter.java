@@ -1,6 +1,7 @@
 package com.kma.ojcore.security.jwt;
 
 import com.kma.ojcore.security.CustomUserDetailsService;
+import com.kma.ojcore.service.impl.TokenBlacklistServiceImpl;
 import com.kma.ojcore.utils.TokenCookieUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -30,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
     private final TokenCookieUtil tokenCookieUtil;
+    private final TokenBlacklistServiceImpl tokenBlacklistServiceImpl;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -52,15 +54,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             System.out.println("JWT from cookie: " + jwt);
 
-            if (StringUtils.hasText(jwt) && tokenProvider.validateAccessToken(jwt)) {
-                UUID userId = tokenProvider.getUserIdFromAccessToken(jwt);
+            if (StringUtils.hasText(jwt)) {
+                // Kiểm tra token có bị blacklist không
+                if (tokenBlacklistServiceImpl.isBlacklisted(jwt)) {
+                    log.warn("Token is blacklisted");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
-                UserDetails userDetails = customUserDetailsService.loadUserById(userId);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                // Validate token
+                if (tokenProvider.validateAccessToken(jwt)) {
+                    UUID userId = tokenProvider.getUserIdFromAccessToken(jwt);
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    UserDetails userDetails = customUserDetailsService.loadUserById(userId);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         } catch (Exception ex) {
             log.error("Could not set user authentication in security context", ex);
