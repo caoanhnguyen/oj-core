@@ -54,12 +54,24 @@ spring:
     password: ${RABBITMQ_DEFAULT_PASS:guest}
 
   # ==============================================================
-  # 4. SECURITY (Cấu hình tạm để test API)
+  # 4. SECURITY & OAUTH2
   # ==============================================================
   security:
-    user:
-      name: admin
-      password: admin
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:your-google-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:your-google-client-secret}
+            scope:
+              - email
+              - profile
+          github:
+            client-id: ${GITHUB_CLIENT_ID:your-github-client-id}
+            client-secret: ${GITHUB_CLIENT_SECRET:your-github-client-secret}
+            scope:
+              - user:email
+              - read:user
 
 # ==============================================================
 # 5. CUSTOM CONFIG (MinIO) - Lưu file
